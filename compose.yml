@@ -1,0 +1,19 @@
+services:
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    volumes:
+      - ./data/influxdb2:/var/lib/influxdb2
+    ports:
+      - 8086:8086
+    env_file:
+      - ./.env
+    restart: always
+  battery:
+    image: battery:latest
+    build: .
+    volumes:
+      - .env:/app/.env
+    env_file:
+      - ./.env
+    restart: always
