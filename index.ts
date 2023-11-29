@@ -44,12 +44,11 @@ async function getCurrentInfomationFromAiSEG2(url: string, username: string, pas
   return {};
 }
 
-/// メイン処理
+/// AiSEG2から情報を取得して、コンソールに出力する
 /// @param writeInfluxDB InfluxDBに書き込むかどうか
-async function main(writeInfluxDB: boolean = false) {
+async function collectStats(writeInfluxDB: boolean = false) {
   // 瞬間値の情報を取得
   const currentInfomation1 = await getCurrentInfomationFromAiSEG2(`${baseUrl}/data/electricflow/111/update`, username, password) || {};
-  const currentInfomation2 = await getCurrentInfomationFromAiSEG2(`${baseUrl}/data/electricflow/112/update`, username, password) || {};
 
   // 発電量の値を取得
   const powerGenerated = await getTotalValueFromAiSEG2(`${baseUrl}/page/graph/51111`, username, password) || 0;
@@ -67,16 +66,6 @@ async function main(writeInfluxDB: boolean = false) {
   // 蓄電池の放電可能な電力量を計算
   const remainingCapacity = ((batteryPercentage - batteryLowLimit) * batteryCapacity) / 100;
 
-  // 太陽光発電の発電量(瞬間値)を取得
-  const currentPVOutput = Number.parseFloat(currentInfomation2.lo_sun_lo_kW || "0.0");
-  // 家庭内の使用電力量(瞬間値)を取得
-  const currentUsedPower = Number.parseFloat(currentInfomation2.u_capacity || "0.0");
-  // 系統からの受電量(瞬間値)を取得
-  const currentGridPower = Number.parseFloat(currentInfomation2.lo_densen_lo_kw || "0.0");
-  // 蓄電池からの放電量(瞬間値)を取得
-  let _curentBatteryPower = Number.parseFloat(currentInfomation2.lo_battery_lo_kW || "0.0");
-  const curentBatteryPower = (currentInfomation2.charge === "0") ? _curentBatteryPower * -1.0 : _curentBatteryPower;
-
   // 結果をコンソールに出力
   console.log("--------------------------------------------------");
   console.log('現在時刻: ', new Date().toLocaleString());
@@ -87,10 +76,6 @@ async function main(writeInfluxDB: boolean = false) {
   console.log('差し引き推定蓄電量: ', estimatedCapacity.toFixed(1), 'kWh');
   console.log('蓄電池 残パーセント: ', batteryPercentage.toFixed(0), '%');
   console.log('蓄電池 放電可能な電力量: ', remainingCapacity.toFixed(1), 'kWh');
-  console.log('太陽光発電の発電量(瞬間値): ', currentPVOutput.toFixed(1), 'kW');
-  console.log('家庭内の使用電力量(瞬間値): ', currentUsedPower.toFixed(1), 'kW');
-  console.log('系統からの受電量(瞬間値): ', currentGridPower.toFixed(1), 'kW');
-  console.log('蓄電池の入出力量(瞬間値): ', curentBatteryPower.toFixed(1), 'kW');
 
   // InfluxDBが設定されている場合は、InfluxDBに書き込み
   if (writeInfluxDB) {
@@ -109,6 +94,46 @@ async function main(writeInfluxDB: boolean = false) {
         .floatField('estimatedCapacity', estimatedCapacity)
         .floatField('batteryPercentage', batteryPercentage)
         .floatField('remainingCapacity', remainingCapacity)
+    )
+    influxWriter.flush();
+    influxWriter.close();
+  }
+}
+
+/// AiSEG2から情報を取得して、コンソールに出力する
+/// @param writeInfluxDB InfluxDBに書き込むかどうか
+async function collectCurentStatus(writeInfluxDB: boolean = false) {
+  // 瞬間値の情報を取得
+  const currentInfomation2 = await getCurrentInfomationFromAiSEG2(`${baseUrl}/data/electricflow/112/update`, username, password) || {};
+
+  // 太陽光発電の発電量(瞬間値)を取得
+  const currentPVOutput = Number.parseFloat(currentInfomation2.lo_sun_lo_kW || "0.0");
+  // 家庭内の使用電力量(瞬間値)を取得
+  const currentUsedPower = Number.parseFloat(currentInfomation2.u_capacity || "0.0");
+  // 系統からの受電量(瞬間値)を取得
+  const currentGridPower = Number.parseFloat(currentInfomation2.lo_densen_lo_kW || "0.0");
+  // 蓄電池からの放電量(瞬間値)を取得
+  let _curentBatteryPower = Number.parseFloat(currentInfomation2.lo_battery_lo_kW || "0.0");
+  const curentBatteryPower = (currentInfomation2.charge === 0) ? _curentBatteryPower * -1.0 : _curentBatteryPower;
+
+  // 結果をコンソールに出力
+  console.log("--------------------------------------------------");
+  console.log('現在時刻: ', new Date().toLocaleString());
+  console.log('太陽光発電の発電量(瞬間値): ', currentPVOutput.toFixed(1), 'kW');
+  console.log('家庭内の使用電力量(瞬間値): ', currentUsedPower.toFixed(1), 'kW');
+  console.log('系統からの受電量(瞬間値): ', currentGridPower.toFixed(1), 'kW');
+  console.log('蓄電池の入出力量(瞬間値): ', curentBatteryPower.toFixed(1), 'kW');
+
+  // InfluxDBが設定されている場合は、InfluxDBに書き込み
+  if (writeInfluxDB) {
+    // InfluxDBとの接続
+    const influxDbClient = new InfluxDB({ url: env.config().parsed?.INFLUXDB_URL || '', token: env.config().parsed?.INFLUXDB_TOKEN || '' });
+    const influxOrg = env.config().parsed?.INFLUXDB_ORG || '';
+    const influxBucket = env.config().parsed?.INFLUXDB_BUCKET || '';
+    const influxWriter = influxDbClient.getWriteApi(influxOrg, influxBucket, 's')
+
+    influxWriter.writePoint(
+      new Point('battery')
         .floatField('currentPVOutput', currentPVOutput)
         .floatField('currentUsedPower', currentUsedPower)
         .floatField('currentGridPower', currentGridPower)
@@ -120,9 +145,11 @@ async function main(writeInfluxDB: boolean = false) {
 }
 
 // 初回実行
-main();
+collectStats();
+collectCurentStatus();
 
-// InfluxDBが設定されている場合は、1分ごとに実行してInfluxDBに書き込み
+// InfluxDBが設定されている場合は、定期的に実行してInfluxDBに書き込み
 if (env.config().parsed?.INFLUXDB_URL) {
-  setInterval(() => { main(true) }, 1000 * 60);
+  setInterval(() => { collectStats(true) }, 1000 * 60);
+  setInterval(() => { collectCurentStatus(true) }, 1000 * 10);
 }
