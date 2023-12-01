@@ -139,6 +139,8 @@ async function collectCurentStatus(writeInfluxDB: boolean = false) {
         .floatField('currentUsedPower', currentUsedPower)
         .floatField('currentGridPower', currentGridPower)
         .floatField('curentBatteryPower', curentBatteryPower)
+        .intField('currentBatteryChargeStatus', currentInfomation2.charge)
+        .intField('currentGridBuySellStatus', currentInfomation2.lo_buy_sell)
     )
     influxWriter.flush();
     influxWriter.close();
