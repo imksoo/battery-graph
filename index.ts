@@ -114,8 +114,8 @@ async function collectCurentStatus(writeInfluxDB: boolean = false) {
   const _currentGridPower = Number.parseFloat(currentInfomation2.lo_densen_lo_kW || "0.0");
   const currentGridPower = (currentInfomation2.lo_buy_sell === 1) ? _currentGridPower * -1.0 : _currentGridPower;
   // 蓄電池からの放電量(瞬間値)を取得
-  const _curentBatteryPower = Number.parseFloat(currentInfomation2.lo_battery_lo_kW || "0.0");
-  const curentBatteryPower = (currentInfomation2.charge === 0) ? _curentBatteryPower * -1.0 : _curentBatteryPower;
+  const _currentBatteryPower = Number.parseFloat(currentInfomation2.lo_battery_lo_kW || "0.0");
+  const currentBatteryPower = (currentInfomation2.charge === 0) ? _currentBatteryPower * -1.0 : _currentBatteryPower;
 
   // 結果をコンソールに出力
   console.log("--------------------------------------------------");
@@ -123,7 +123,7 @@ async function collectCurentStatus(writeInfluxDB: boolean = false) {
   console.log('太陽光発電の発電量(瞬間値): ', currentPVOutput.toFixed(1), 'kW');
   console.log('家庭内の使用電力量(瞬間値): ', currentUsedPower.toFixed(1), 'kW');
   console.log('系統との入出力量(瞬間値): ', currentGridPower.toFixed(1), 'kW');
-  console.log('蓄電池の入出力量(瞬間値): ', curentBatteryPower.toFixed(1), 'kW');
+  console.log('蓄電池の入出力量(瞬間値): ', currentBatteryPower.toFixed(1), 'kW');
 
   // InfluxDBが設定されている場合は、InfluxDBに書き込み
   if (writeInfluxDB) {
@@ -138,7 +138,7 @@ async function collectCurentStatus(writeInfluxDB: boolean = false) {
         .floatField('currentPVOutput', currentPVOutput)
         .floatField('currentUsedPower', currentUsedPower)
         .floatField('currentGridPower', currentGridPower)
-        .floatField('curentBatteryPower', curentBatteryPower)
+        .floatField('currentBatteryPower', currentBatteryPower)
         .intField('currentBatteryChargeStatus', currentInfomation2.charge)
         .intField('currentGridBuySellStatus', currentInfomation2.lo_buy_sell)
     )
