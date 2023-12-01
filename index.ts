@@ -111,9 +111,10 @@ async function collectCurentStatus(writeInfluxDB: boolean = false) {
   // 家庭内の使用電力量(瞬間値)を取得
   const currentUsedPower = Number.parseFloat(currentInfomation2.u_capacity || "0.0");
   // 系統からの受電量(瞬間値)を取得
-  const currentGridPower = Number.parseFloat(currentInfomation2.lo_densen_lo_kW || "0.0");
+  const _currentGridPower = Number.parseFloat(currentInfomation2.lo_densen_lo_kW || "0.0");
+  const currentGridPower = (currentInfomation2.lo_buy_sell === 1) ? _currentGridPower * -1.0 : _currentGridPower;
   // 蓄電池からの放電量(瞬間値)を取得
-  let _curentBatteryPower = Number.parseFloat(currentInfomation2.lo_battery_lo_kW || "0.0");
+  const _curentBatteryPower = Number.parseFloat(currentInfomation2.lo_battery_lo_kW || "0.0");
   const curentBatteryPower = (currentInfomation2.charge === 0) ? _curentBatteryPower * -1.0 : _curentBatteryPower;
 
   // 結果をコンソールに出力
@@ -121,7 +122,7 @@ async function collectCurentStatus(writeInfluxDB: boolean = false) {
   console.log('現在時刻: ', new Date().toLocaleString());
   console.log('太陽光発電の発電量(瞬間値): ', currentPVOutput.toFixed(1), 'kW');
   console.log('家庭内の使用電力量(瞬間値): ', currentUsedPower.toFixed(1), 'kW');
-  console.log('系統からの受電量(瞬間値): ', currentGridPower.toFixed(1), 'kW');
+  console.log('系統との入出力量(瞬間値): ', currentGridPower.toFixed(1), 'kW');
   console.log('蓄電池の入出力量(瞬間値): ', curentBatteryPower.toFixed(1), 'kW');
 
   // InfluxDBが設定されている場合は、InfluxDBに書き込み
