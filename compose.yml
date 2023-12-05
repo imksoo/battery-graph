@@ -8,8 +8,6 @@ services:
       - 8086:8086
     env_file:
       - ./.env
-    environment:
-      - INFLUXD_SESSION_LENGTH=1440
     restart: always
   battery:
     image: battery:latest
